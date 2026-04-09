@@ -1,4 +1,5 @@
-export SOURCE_DATE_EPOCH := 1609459200
+export SOURCE_DATE_EPOCH := $(shell date -d '1797 days ago' +%s)
+
 
 
 # compilers
