@@ -7,7 +7,7 @@ static LPVOID pagePrev = NULL;
 static LPVOID pageCurr = NULL;
 
 int vehInstalled = 0;
-SIZE_T pageSize = 0;
+static SIZE_T pageSize = 0;
 
 LPVOID ControlStart = 0;
 SIZE_T ControlSize = 0;
@@ -17,38 +17,41 @@ void AcquireSpinLock() {
     YieldProcessor();
 }
 
+void ReleaseSpinLock() { InterlockedExchange(&vehLock, 0); }
+
+static inline LPVOID AlignDown(LPVOID p) { return (LPVOID)((ULONG_PTR)p & ~(pageSize - 1)); }
+
 void ProtectMemoryPages(LPVOID start, SIZE_T size) {
+  SYSTEM_INFO si;
+  MyGetSystemInfo(&si);
+  pageSize = si.dwPageSize;
+
   ControlStart = start;
   ControlSize = size;
 
-  ULONG oldProtect;
-  SYSTEM_INFO si;
-
-  MyGetSystemInfo(&si);
-
-  SIZE_T pageSize = si.dwPageSize;
-
   for (SIZE_T offset = 0; offset < size; offset += pageSize) {
-    PVOID page = (PBYTE)start + offset;
+
+    LPVOID page = (LPBYTE)start + offset;
+    page = AlignDown(page);
+
     SIZE_T regionSize = pageSize;
+    ULONG oldProtect = 0;
 
     NTSTATUS status = MyNtProtectVirtualMemory(MyGetCurrentProcess(), &page, &regionSize, PAGE_EXECUTE_READ | PAGE_GUARD, &oldProtect);
 
-    if (status < 0) {
-
-      break;
+    if (!NT_SUCCESS(status)) {
+      __debugbreak();
+      return;
     }
   }
 }
 
-void ReleaseSpinLock() { InterlockedExchange(&vehLock, 0); }
-
 void EncryptPage(void *page) {
 
   ULONG oldProtect;
-  SIZE_T localSize = pageSize;
-  PVOID base = page;
 
+  PVOID base = page;
+  SIZE_T localSize = pageSize;
   if (!NT_SUCCESS(MyNtProtectVirtualMemory(MyGetCurrentProcess(), &base, &localSize, PAGE_READWRITE, &oldProtect))) {
 
     return;
@@ -65,9 +68,9 @@ void EncryptPage(void *page) {
 void DecryptPage(void *page) {
 
   ULONG oldProtect;
-  SIZE_T localSize = pageSize;
-  PVOID base = page;
 
+  PVOID base = page;
+  SIZE_T localSize = pageSize;
   if (!NT_SUCCESS(MyNtProtectVirtualMemory(MyGetCurrentProcess(), &base, &localSize, PAGE_READWRITE, &oldProtect))) {
     return;
   }
@@ -92,12 +95,6 @@ LONG CALLBACK JITDecryptVEH(PEXCEPTION_POINTERS ExceptionInfo) {
     return EXCEPTION_CONTINUE_SEARCH;
   }
 
-  if (pageSize == 0) {
-    SYSTEM_INFO si;
-    MyGetSystemInfo(&si);
-    pageSize = si.dwPageSize;
-  }
-
   ULONG_PTR rip = ExceptionInfo->ContextRecord->Rip;
   if (rip < (ULONG_PTR)ControlStart || rip >= (ULONG_PTR)ControlStart + ControlSize) {
     exit(0);
@@ -107,7 +104,7 @@ LONG CALLBACK JITDecryptVEH(PEXCEPTION_POINTERS ExceptionInfo) {
 
   LPVOID faultAddr = (LPVOID)ExceptionInfo->ExceptionRecord->ExceptionInformation[1];
 
-  LPVOID newPage = (LPVOID)((ULONG_PTR)faultAddr & ~(pageSize - 1));
+  LPVOID newPage = AlignDown(faultAddr);
 
   DecryptPage(newPage);
 
