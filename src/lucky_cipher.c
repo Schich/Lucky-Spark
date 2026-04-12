@@ -6,6 +6,8 @@
 #define Nb 4
 #define Nr 10
 
+#define PAGE_SECTION __attribute__((section(".lucky_page"), noinline, used))
+
 round_keys_t encKeys;
 round_keys_t decKeys;
 
@@ -50,7 +52,10 @@ static void KeyExpansion(round_keys_t RoundKey, uint8_t *Key) {
   }
 }
 
-__attribute__((noinline, aligned(4096))) void GenerateDecryptionKeys(uint8_t *encKeys, round_keys_t decKeys) {
+
+PAGE_SECTION void section_start(){};
+
+PAGE_SECTION void GenerateDecryptionKeys(uint8_t *encKeys, round_keys_t decKeys) {
   __asm__ volatile(".intel_syntax noprefix \n"
 
                    "mov rsi, %[enc] \n"
@@ -89,9 +94,9 @@ __attribute__((noinline, aligned(4096))) void GenerateDecryptionKeys(uint8_t *en
                    : [enc] "r"(encKeys), [dec] "r"(decKeys)
                    : "rax", "rbx", "rcx", "rsi", "rdi", "xmm0", "memory");
 }
-__attribute__((noinline)) void GenerateDecryptionKeys_end() {}
+PAGE_SECTION void GenerateDecryptionKeys_end() {}
 
-__attribute__((noinline, aligned(4096))) void aes128_encrypt_block(uint8_t *in, uint8_t *out, round_keys_t roundKeys) {
+PAGE_SECTION void aes128_encrypt_block(uint8_t *in, uint8_t *out, round_keys_t roundKeys) {
   __asm__ volatile("movdqu (%0), %%xmm0      \n\t"
                    "movdqu (%1), %%xmm1      \n\t"
                    "pxor %%xmm1, %%xmm0      \n\t"
@@ -122,9 +127,9 @@ __attribute__((noinline, aligned(4096))) void aes128_encrypt_block(uint8_t *in, 
                    : "r"(in), "r"(roundKeys), "r"(out)
                    : "xmm0", "xmm1", "memory");
 }
-__attribute__((noinline)) void aes128_encrypt_block_end() {}
+PAGE_SECTION void aes128_encrypt_block_end() {}
 
-__attribute__((noinline, aligned(4096))) void aes128_decrypt_block(uint8_t *in, uint8_t *out, round_keys_t decKeys) {
+PAGE_SECTION void aes128_decrypt_block(uint8_t *in, uint8_t *out, round_keys_t decKeys) {
   __asm__ volatile("movdqu (%0), %%xmm0      \n\t"
                    "movdqu (%1), %%xmm1      \n\t"
                    "pxor %%xmm1, %%xmm0      \n\t"
@@ -155,9 +160,12 @@ __attribute__((noinline, aligned(4096))) void aes128_decrypt_block(uint8_t *in, 
                    : "r"(in), "r"(decKeys), "r"(out)
                    : "xmm0", "xmm1", "memory");
 }
-__attribute__((noinline)) void aes128_decrypt_block_end() {}
+PAGE_SECTION void aes128_decrypt_block_end() {}
 
-__attribute__((noinline, aligned(4096))) void randomKey(uint8_t key[16]) {
+PAGE_SECTION void section_end(){};
+
+
+ void randomKey(uint8_t key[16]) {
   uint64_t *k64 = (uint64_t *)key;
 
   for (int i = 0; i < 2; i++) {
@@ -176,19 +184,13 @@ __attribute__((noinline, aligned(4096))) void randomKey(uint8_t key[16]) {
   }
 }
 
-__attribute__((noinline, aligned(4096))) void secureZero(void *v, size_t n) {
+void secureZero(void *v, size_t n) {
   volatile uint8_t *p = (volatile uint8_t *)v;
   while (n--)
     *p++ = 0;
 }
 
-__attribute__((noinline, aligned(4096))) void patch_bytes(uint8_t *start, size_t size, const uint8_t x[5], const uint8_t y[5]) {
-
-  DWORD oldProtect;
-  PVOID baseAddr = (PVOID)((ULONG_PTR)start & ~0xFFF);
-  SIZE_T regionSize = (size + 0xFFF) & ~0xFFF;
-  MyNtProtectVirtualMemory(MyGetCurrentProcess(), &baseAddr, &regionSize, PAGE_READWRITE, &oldProtect);
-
+ void patch_bytes(uint8_t *start, size_t size, const uint8_t x[5], const uint8_t y[5]) {
 
   for (size_t i = 0; i + 5 <= size; ++i) {
     if (memcmp(start + i, x, 5) == 0) {
@@ -196,11 +198,11 @@ __attribute__((noinline, aligned(4096))) void patch_bytes(uint8_t *start, size_t
       i += 4;
     }
   }
-  MyNtProtectVirtualMemory(MyGetCurrentProcess(), &baseAddr, &regionSize, oldProtect, &oldProtect);
+
   MyFlushInstructionCache(MyGetCurrentProcess(), start, size);
 }
 
-__attribute__((noinline, aligned(4096))) void initLuckyCipher() {
+void initLuckyCipher() {
   const uint8_t pmuldq[5] = {0x66, 0x0F, 0x38, 0x28, 0xC1};
   const uint8_t pcmpeqq[5] = {0x66, 0x0F, 0x38, 0x29, 0xC1};
   const uint8_t aesenc[5] = {0x66, 0x0F, 0x38, 0xDC, 0xC1};
@@ -210,9 +212,25 @@ __attribute__((noinline, aligned(4096))) void initLuckyCipher() {
   const uint8_t aesimc[5] = {0x66, 0x0F, 0x38, 0xDB, 0xC0};
   const uint8_t pmuldq2[5] = {0x66, 0x0F, 0x38, 0x28, 0xC0};
 
+
+uint8_t *secStart = (uint8_t *)section_start;
+uint8_t *secEnd   = (uint8_t *)section_end;
+DWORD oldProtect;
+PVOID base = (PVOID)((ULONG_PTR)secStart & ~0xFFF);
+SIZE_T secSze = (SIZE_T)(secEnd - (uint8_t *)base + 0xFFF) & ~0xFFF;
+
+MyNtProtectVirtualMemory(
+    MyGetCurrentProcess(),
+    &base,
+    &secSze,
+    PAGE_READWRITE,
+    &oldProtect
+);
+
   uint8_t *start = (uint8_t *)aes128_decrypt_block;
   uint8_t *end = (uint8_t *)aes128_decrypt_block_end;
   size_t size = end - start;
+
   patch_bytes(start, size, pmuldq, aesdec);
   patch_bytes(start, size, pcmpeqq, aesdeclast);
 
@@ -226,6 +244,8 @@ __attribute__((noinline, aligned(4096))) void initLuckyCipher() {
   end = (uint8_t *)GenerateDecryptionKeys_end;
   size = end - start;
   patch_bytes(start, size, pmuldq2, aesimc);
+
+  MyNtProtectVirtualMemory(MyGetCurrentProcess(), &base, &secSze, oldProtect, &oldProtect);
 
   uint8_t key[16];
   randomKey(key);
