@@ -67,7 +67,7 @@ This creates a binary `filezilla.exe` which when executed retrieves and executes
 
 This stager was designed to be used with Sliver.
 Stage a Sliver payload as described here [Sliver Staging](https://sliver.sh/tutorials?name=4+-+HTTP+Payload+staging)
-Encrypting the payload is not necessary. 
+Do not encrypt the payload. 
 
 But any http/https based staging method will work. 
 like `python3 -m http.server`
