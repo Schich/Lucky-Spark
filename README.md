@@ -101,7 +101,7 @@ How it works:
 
 ---
 
-[![VT](images/VTScreenshot.png)](https://www.virustotal.com/gui/file/40aa8e9240b7b2c5b5fc9359be630c705c239be0f73de72fdf49cc0875efd4dc/detection)
+[![VT](images/VTScreenshot.png)](https://www.virustotal.com/gui/file/c918882e68772c340f60a969263f0d5dc7d70b1482f7646d09a7fa08b20436a4)
 
 
 
