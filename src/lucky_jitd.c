@@ -2,9 +2,7 @@
 
 volatile LONG vehLock = 0;
 
-static LPVOID pagePrevPrev = NULL;
-static LPVOID pagePrev = NULL;
-static LPVOID pageCurr = NULL;
+static LPVOID pages[3];
 
 int vehInstalled = 0;
 static SIZE_T pageSize = 0;
@@ -102,19 +100,14 @@ LONG CALLBACK JITDecryptVEH(PEXCEPTION_POINTERS ExceptionInfo) {
 
   AcquireSpinLock();
 
-  LPVOID faultAddr = (LPVOID)ExceptionInfo->ExceptionRecord->ExceptionInformation[1];
-
-  LPVOID newPage = AlignDown(faultAddr);
-
-  DecryptPage(newPage);
-
-  if (pagePrevPrev) {
-    EncryptPage(pagePrevPrev);
+  if (pages[2]) {
+    EncryptPage(pages[2]);
   }
+  pages[2] = pages[1];
+  pages[1] = pages[0];
+  pages[0] = AlignDown((LPVOID)ExceptionInfo->ExceptionRecord->ExceptionInformation[1]);
 
-  pagePrevPrev = pagePrev;
-  pagePrev = pageCurr;
-  pageCurr = newPage;
+  DecryptPage(pages[0]);
 
   ReleaseSpinLock();
   return EXCEPTION_CONTINUE_EXECUTION;
