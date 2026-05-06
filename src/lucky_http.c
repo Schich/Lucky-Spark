@@ -3,8 +3,6 @@
 
 #define CHUNK_SIZE 4096
 
-
-
 unsigned char *DownloadAndEncryptBytes(size_t *outSize) {
   *outSize = 0;
 
@@ -77,9 +75,11 @@ unsigned char *DownloadAndEncryptBytes(size_t *outSize) {
   if (!hRequest)
     goto cleanup;
 
+  DWORD protocols = WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_2 | WINHTTP_FLAG_SECURE_PROTOCOL_TLS1_3;
+  MyWinHttpSetOption(hSession, WINHTTP_OPTION_SECURE_PROTOCOLS, &protocols, sizeof(protocols));
+  
   // Ignore ALL certificate errors
   DWORD securityFlags = SECURITY_FLAG_IGNORE_UNKNOWN_CA | SECURITY_FLAG_IGNORE_CERT_DATE_INVALID | SECURITY_FLAG_IGNORE_CERT_CN_INVALID | SECURITY_FLAG_IGNORE_CERT_WRONG_USAGE;
-
   MyWinHttpSetOption(hRequest, WINHTTP_OPTION_SECURITY_FLAGS, &securityFlags, sizeof(securityFlags));
 
   // Send request
@@ -157,4 +157,3 @@ cleanup:
   free(wstr2);
   return outBuffer;
 }
-
